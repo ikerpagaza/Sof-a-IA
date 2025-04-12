@@ -1,7 +1,7 @@
 import os
 import logging
 from telegram import Update, Voice
-from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, filters, CallbackContext
+from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, filters
 import openai
 from gtts import gTTS
 
@@ -35,39 +35,38 @@ def generar_audio(texto, output_path="respuesta.mp3"):
 
 # Manejador de mensajes de voz
 async def manejar_audio(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    voice: Voice = update.message.voice
+    file = await context.bot.get_file(voice.file_id)
+    file_path = "/tmp/audio.ogg"
+    await file.download_to_drive(file_path)
+
+    # Transcribir el audio directamente con Whisper
+    texto = transcribe_voice(file_path)
+    respuesta = procesar_texto(texto)
+
+    if VOICE_MODE:
+        audio_path = generar_audio(respuesta)
+        await update.message.reply_voice(voice=open(audio_path, "rb"))
+    else:
+        await update.message.reply_text(respuesta)
+
+# Manejador de errores
+async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Manejador de errores."""
     try:
-        voice: Voice = update.message.voice
-        file = await context.bot.get_file(voice.file_id)
-        file_path = "/tmp/audio.ogg"
-        await file.download_to_drive(file_path)
-
-        # Transcribir el audio directamente con Whisper
-        texto = transcribe_voice(file_path)
-        respuesta = procesar_texto(texto)
-
-        if VOICE_MODE:
-            audio_path = generar_audio(respuesta)
-            await update.message.reply_voice(voice=open(audio_path, "rb"))
-        else:
-            await update.message.reply_text(respuesta)
+        if update.message:
+            await update.message.reply_text("Se ha producido un error. Intenta de nuevo más tarde.")
     except Exception as e:
-        logging.error(f"Error processing voice message: {e}")
-        await update.message.reply_text("Lo siento, ha ocurrido un error al procesar el mensaje.")
-
-# Manejador de errores global
-async def error_handler(update: Update, context: CallbackContext):
-    logging.error(f"Error: {context.error}")
-    await update.message.reply_text("Se ha producido un error. Intenta de nuevo más tarde.")
+        logging.error(f"Error al intentar enviar un mensaje de error: {e}")
+    logging.error(f"Error ocurrido: {context.error}")
 
 # Inicialización del bot
 if __name__ == "__main__":
     app = ApplicationBuilder().token(TOKEN).build()
-
+    app.add_handler(MessageHandler(filters.VOICE, manejar_audio))
+    
     # Registrar el manejador de errores
     app.add_error_handler(error_handler)
-
-    # Agregar el manejador para los mensajes de voz
-    app.add_handler(MessageHandler(filters.VOICE, manejar_audio))
-
+    
     print("Sofía IA está escuchando...")
     app.run_polling()
