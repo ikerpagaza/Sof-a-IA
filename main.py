@@ -50,9 +50,21 @@ async def manejar_audio(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         await update.message.reply_text(respuesta)
 
+# Manejador de mensajes de texto
+async def manejar_texto(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    texto = update.message.text
+    respuesta = procesar_texto(texto)
+    await update.message.reply_text(respuesta)
+
 # Inicialización del bot
 if __name__ == "__main__":
     app = ApplicationBuilder().token(TOKEN).build()
+
+    # Añadir el manejador de mensajes de texto
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.VOICE, manejar_texto))
+
+    # Añadir el manejador de mensajes de voz
     app.add_handler(MessageHandler(filters.VOICE, manejar_audio))
+
     print("Sofía IA está escuchando...")
     app.run_polling()
