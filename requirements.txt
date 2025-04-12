@@ -4,3 +4,4 @@ gtts
 pydub
 requests
 python-dotenv
+Flask==2.2.2
