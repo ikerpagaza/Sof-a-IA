@@ -1,11 +1,10 @@
 import os
 import logging
 from flask import Flask, request
-from telegram import Update
-from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, filters
+from telegram import Update, Bot
+from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, CommandHandler, filters
 import openai
 from gtts import gTTS
-from telegram import Bot
 
 # Configuración básica
 TOKEN = os.getenv("TELEGRAM_TOKEN")
@@ -36,6 +35,11 @@ def generar_audio(texto, output_path="respuesta.mp3"):
     tts.save(output_path)
     return output_path
 
+# Función para responder a mensajes de texto (comando /start)
+def send_welcome(update, context):
+    chat_id = update.message.chat_id
+    context.bot.send_message(chat_id=chat_id, text="¡Hola! Soy Sofía, tu asistente de IA.")
+
 # Manejador de mensajes de voz
 async def manejar_audio(update: Update, context: ContextTypes.DEFAULT_TYPE):
     voice = update.message.voice
@@ -64,7 +68,13 @@ def webhook():
 
 # Inicializar la aplicación de Telegram
 application = ApplicationBuilder().token(TOKEN).build()
-application.add_handler(MessageHandler(filters.VOICE, manejar_audio))
+dispatcher = application.dispatcher
+
+# Agregar el comando /start
+dispatcher.add_handler(CommandHandler("start", send_welcome))
+
+# Agregar el manejador de voz
+dispatcher.add_handler(MessageHandler(filters.VOICE, manejar_audio))
 
 # Configurar el webhook
 def set_webhook():
