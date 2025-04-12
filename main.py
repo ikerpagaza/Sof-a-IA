@@ -3,7 +3,6 @@ import logging
 from telegram import Update, Voice
 from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, filters
 import openai
-import requests
 from gtts import gTTS
 
 # Configuración básica
@@ -41,12 +40,8 @@ async def manejar_audio(update: Update, context: ContextTypes.DEFAULT_TYPE):
     file_path = "/tmp/audio.ogg"
     await file.download_to_drive(file_path)
 
-    # Convertir ogg a mp3 para Whisper
-    from pydub import AudioSegment
-    mp3_path = "/tmp/audio.mp3"
-    AudioSegment.from_ogg(file_path).export(mp3_path, format="mp3")
-
-    texto = transcribe_voice(mp3_path)
+    # Transcribir el audio directamente con Whisper
+    texto = transcribe_voice(file_path)
     respuesta = procesar_texto(texto)
 
     if VOICE_MODE:
