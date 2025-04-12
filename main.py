@@ -58,4 +58,4 @@ if __name__ == "__main__":
     app = ApplicationBuilder().token(TOKEN).build()
     app.add_handler(MessageHandler(filters.VOICE, manejar_audio))
     print(f"Sofía IA está escuchando en el puerto {PORT}...")
-    app.run_polling(port=PORT)  # Aquí especificamos el puerto para que use el puerto que definimos
+    app.run_polling()  # Aquí especificamos el puerto para que use el puerto que definimos
