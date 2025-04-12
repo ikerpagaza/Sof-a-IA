@@ -1,11 +1,11 @@
 import os
 import logging
+import json  # Importación añadida para manejar JSON
 from flask import Flask, request
-from telegram import Update
+from telegram import Update, Bot
 from telegram.ext import Application, MessageHandler, filters
 import openai
 from gtts import gTTS
-from telegram import Bot
 
 # Configuración básica
 TOKEN = os.getenv("TELEGRAM_TOKEN")
@@ -58,7 +58,8 @@ async def manejar_audio(update: Update, context):
 def webhook():
     if request.method == "POST":
         json_str = request.get_data(as_text=True)
-        update = Update.de_json(json_str, Bot(TOKEN))
+        update_dict = json.loads(json_str)  # Convertir la cadena JSON en dict
+        update = Update.de_json(update_dict, Bot(TOKEN))
         application.process_update(update)
         return "OK"
 
@@ -75,4 +76,4 @@ def set_webhook():
 # Ejecutar Flask y el bot
 if __name__ == "__main__":
     set_webhook()  # Configurar el webhook con Telegram
-    app.run(host="0.0.0.0", port=int(os.getenv("PORT", 8080)))  # Flask servidor
+    app.run(host="0.0.0.0", port=int(os.getenv("PORT", 8080)))  # Ejecuta el servidor Flask
