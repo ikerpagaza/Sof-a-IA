@@ -3,3 +3,4 @@ openai
 gtts
 pydub
 requests
+python-dotenv
