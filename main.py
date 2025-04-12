@@ -1,9 +1,9 @@
 import os
 import logging
-import json  # Importación añadida para manejar JSON
+import json
 from flask import Flask, request
 from telegram import Update, Bot
-from telegram.ext import Application, MessageHandler, filters
+from telegram.ext import Application, MessageHandler, CommandHandler, filters
 import openai
 from gtts import gTTS
 
@@ -12,6 +12,8 @@ TOKEN = os.getenv("TELEGRAM_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 VOICE_MODE = os.getenv("VOICE_MODE", "off") == "on"
 openai.api_key = OPENAI_API_KEY
+
+logging.basicConfig(level=logging.INFO)
 
 # Configuración de Flask
 app = Flask(__name__)
@@ -38,42 +40,52 @@ def generar_audio(texto, output_path="respuesta.mp3"):
 
 # Manejador de mensajes de voz
 async def manejar_audio(update: Update, context):
-    voice = update.message.voice
-    file = await context.bot.get_file(voice.file_id)
-    file_path = "/tmp/audio.ogg"
-    await file.download_to_drive(file_path)
+    try:
+        voice = update.message.voice
+        file = await context.bot.get_file(voice.file_id)
+        file_path = "/tmp/audio.ogg"
+        await file.download_to_drive(file_path)
+        # Transcribir el audio directamente con Whisper
+        texto = transcribe_voice(file_path)
+        logging.info(f"Transcripción: {texto}")
+        respuesta = procesar_texto(texto)
+        logging.info(f"Respuesta IA: {respuesta}")
+        if VOICE_MODE:
+            audio_path = generar_audio(respuesta)
+            await update.message.reply_voice(voice=open(audio_path, "rb"))
+        else:
+            await update.message.reply_text(respuesta)
+    except Exception as e:
+        logging.error(f"Error en manejar_audio: {e}")
+        await update.message.reply_text("Lo siento, ocurrió un error al procesar tu mensaje.")
 
-    # Transcribir el audio directamente con Whisper
-    texto = transcribe_voice(file_path)
-    respuesta = procesar_texto(texto)
-
-    if VOICE_MODE:
-        audio_path = generar_audio(respuesta)
-        await update.message.reply_voice(voice=open(audio_path, "rb"))
-    else:
-        await update.message.reply_text(respuesta)
-
-# Ruta para manejar el webhook
-@app.route('/webhook', methods=['POST'])
-def webhook():
-    if request.method == "POST":
-        json_str = request.get_data(as_text=True)
-        update_dict = json.loads(json_str)  # Convertir la cadena JSON en dict
-        update = Update.de_json(update_dict, Bot(TOKEN))
-        application.process_update(update)
-        return "OK"
+# Manejador del comando /start
+async def start_command(update: Update, context):
+    await update.message.reply_text("¡Hola! Soy tu nuevo bot.")
 
 # Inicializar la aplicación de Telegram
 application = Application.builder().token(TOKEN).build()
 application.add_handler(MessageHandler(filters.VOICE, manejar_audio))
+application.add_handler(CommandHandler("start", start_command))
 
-# Configurar el webhook
+# Ruta para manejar el webhook de Telegram
+@app.route('/webhook', methods=['POST'])
+def webhook():
+    if request.method == "POST":
+        json_str = request.get_data(as_text=True)
+        update_dict = json.loads(json_str)
+        update = Update.de_json(update_dict, Bot(TOKEN))
+        application.process_update(update)
+        return "OK"
+
+# Función para configurar el webhook en Telegram
 def set_webhook():
     bot = Bot(TOKEN)
-    url = f"https://{os.getenv('RENDER_URL')}/webhook"  # Usar la URL pública de Render
+    url = f"https://{os.getenv('RENDER_URL')}/webhook"  # Asegúrate de que 'RENDER_URL' esté definida como la URL pública de tu servicio.
     bot.set_webhook(url)
 
 # Ejecutar Flask y el bot
 if __name__ == "__main__":
     set_webhook()  # Configurar el webhook con Telegram
-    app.run(host="0.0.0.0", port=int(os.getenv("PORT", 8080)))  # Ejecuta el servidor Flask
+    # Ejecutar el servidor Flask en el puerto asignado (usando PORT de Render o 8080 por defecto)
+    app.run(host="0.0.0.0", port=int(os.getenv("PORT", 8080)))
