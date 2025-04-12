@@ -1,16 +1,12 @@
-from dotenv import load_dotenv
-import os
-
-# Cargar las variables de entorno desde el archivo .env
-load_dotenv()
-
-TOKEN = os.getenv("TELEGRAM_TOKEN")
 import os
 import logging
 from telegram import Update, Voice
 from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, filters
 import openai
 from gtts import gTTS
+
+# Obtener el puerto de la variable de entorno, o 8080 si no está configurado
+PORT = int(os.getenv("PORT", 8080))  # Si no se encuentra el puerto, se usa 8080 como valor predeterminado
 
 # Configuración básica
 TOKEN = os.getenv("TELEGRAM_TOKEN")
@@ -57,23 +53,9 @@ async def manejar_audio(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         await update.message.reply_text(respuesta)
 
-# Manejador de errores
-async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Manejador de errores."""
-    try:
-        if update.message:
-            await update.message.reply_text("Se ha producido un error. Intenta de nuevo más tarde.")
-    except Exception as e:
-        logging.error(f"Error al intentar enviar un mensaje de error: {e}")
-    logging.error(f"Error ocurrido: {context.error}")
-
 # Inicialización del bot
 if __name__ == "__main__":
     app = ApplicationBuilder().token(TOKEN).build()
     app.add_handler(MessageHandler(filters.VOICE, manejar_audio))
-    
-    # Registrar el manejador de errores
-    app.add_error_handler(error_handler)
-    
-    print("Sofía IA está escuchando...")
-    app.run_polling()
+    print(f"Sofía IA está escuchando en el puerto {PORT}...")
+    app.run_polling(port=PORT)  # Aquí especificamos el puerto para que use el puerto que definimos
