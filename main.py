@@ -89,10 +89,11 @@ def webhook():
 # Función para configurar el webhook en Telegram de forma asíncrona
 async def set_webhook_async():
     bot = Bot(TOKEN)
-    # Construimos la URL del webhook usando la variable RENDER_URL
-    webhook_url = f"https://{os.getenv('RENDER_URL')}/webhook"
-    await bot.set_webhook(webhook_url)
-    logging.info("Webhook configurado: " + webhook_url)
+    # URL fija en vez de usar RENDER_URL
+    url = "https://sof-a-ia.onrender.com/webhook"
+    await bot.set_webhook(url)
+    logging.info(f"Webhook configurado en {url}")
+
 
 if __name__ == "__main__":
     # Configurar el webhook
