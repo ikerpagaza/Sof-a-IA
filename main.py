@@ -1,9 +1,10 @@
 import os
 import logging
 import json
+import asyncio
 from flask import Flask, request
 from telegram import Update, Bot
-from telegram.ext import Application, MessageHandler, CommandHandler, filters
+from telegram.ext import Application, MessageHandler, CommandHandler, filters, ContextTypes
 import openai
 from gtts import gTTS
 
@@ -39,21 +40,20 @@ def generar_audio(texto, output_path="respuesta.mp3"):
     return output_path
 
 # Manejador de mensajes de voz
-async def manejar_audio(update: Update, context):
+async def manejar_audio(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         voice = update.message.voice
         file = await context.bot.get_file(voice.file_id)
         file_path = "/tmp/audio.ogg"
         await file.download_to_drive(file_path)
         logging.info(f"Archivo descargado en {file_path}")
-        
+
         # Transcribir el audio directamente con Whisper
         texto = transcribe_voice(file_path)
         logging.info(f"Transcripción: {texto}")
-        
         respuesta = procesar_texto(texto)
         logging.info(f"Respuesta IA: {respuesta}")
-        
+
         if VOICE_MODE:
             audio_path = generar_audio(respuesta)
             await update.message.reply_voice(voice=open(audio_path, "rb"))
@@ -64,7 +64,7 @@ async def manejar_audio(update: Update, context):
         await update.message.reply_text("Lo siento, ocurrió un error al procesar tu mensaje.")
 
 # Manejador del comando /start
-async def start_command(update: Update, context):
+async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logging.info("Se ejecutó /start correctamente.")
     await update.message.reply_text("¡Hola! Soy tu nuevo bot.")
 
@@ -83,15 +83,18 @@ def webhook():
         application.process_update(update)
         return "OK"
 
-# Función para configurar el webhook en Telegram
-def set_webhook():
+# Función para configurar el webhook en Telegram de forma asíncrona
+async def set_webhook_async():
     bot = Bot(TOKEN)
-    url = f"https://{os.getenv('RENDER_URL')}/webhook"  # Asegúrate de que RENDER_URL esté definido, por ejemplo: sof-a-ia.onrender.com
-    bot.set_webhook(url)
+    # Aquí usamos la variable de entorno RENDER_URL o directamente la URL si prefieres:
+    url = f"https://{os.getenv('RENDER_URL')}/webhook"
+    await bot.set_webhook(url)
+    logging.info("Webhook configurado de forma asíncrona.")
 
-# Ejecutar Flask y el bot
 if __name__ == "__main__":
-    set_webhook()  # Configurar el webhook con Telegram
-    # Ejecuta el servidor Flask en el puerto asignado (usualmente asignado por Render o 8080 por defecto)
+    # Configuramos el webhook automáticamente
+    asyncio.run(set_webhook_async())
+    # Ejecutar el servidor Flask (Render inyecta la variable PORT)
     app.run(host="0.0.0.0", port=int(os.getenv("PORT", 8080)))
+
 
