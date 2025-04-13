@@ -45,11 +45,15 @@ async def manejar_audio(update: Update, context):
         file = await context.bot.get_file(voice.file_id)
         file_path = "/tmp/audio.ogg"
         await file.download_to_drive(file_path)
+        logging.info(f"Archivo descargado en {file_path}")
+        
         # Transcribir el audio directamente con Whisper
         texto = transcribe_voice(file_path)
         logging.info(f"Transcripción: {texto}")
+        
         respuesta = procesar_texto(texto)
         logging.info(f"Respuesta IA: {respuesta}")
+        
         if VOICE_MODE:
             audio_path = generar_audio(respuesta)
             await update.message.reply_voice(voice=open(audio_path, "rb"))
@@ -61,6 +65,7 @@ async def manejar_audio(update: Update, context):
 
 # Manejador del comando /start
 async def start_command(update: Update, context):
+    logging.info("Se ejecutó /start correctamente.")
     await update.message.reply_text("¡Hola! Soy tu nuevo bot.")
 
 # Inicializar la aplicación de Telegram
@@ -81,11 +86,12 @@ def webhook():
 # Función para configurar el webhook en Telegram
 def set_webhook():
     bot = Bot(TOKEN)
-    url = f"https://{os.getenv('RENDER_URL')}/webhook"  # Asegúrate de que 'RENDER_URL' esté definida como la URL pública de tu servicio.
+    url = f"https://{os.getenv('RENDER_URL')}/webhook"  # Asegúrate de que RENDER_URL esté definido, por ejemplo: sof-a-ia.onrender.com
     bot.set_webhook(url)
 
 # Ejecutar Flask y el bot
 if __name__ == "__main__":
     set_webhook()  # Configurar el webhook con Telegram
-    # Ejecutar el servidor Flask en el puerto asignado (usando PORT de Render o 8080 por defecto)
+    # Ejecuta el servidor Flask en el puerto asignado (usualmente asignado por Render o 8080 por defecto)
     app.run(host="0.0.0.0", port=int(os.getenv("PORT", 8080)))
+
