@@ -76,12 +76,18 @@ application.add_handler(CommandHandler("start", start_command))
 # Ruta para manejar el webhook de Telegram
 @app.route('/webhook', methods=['POST'])
 def webhook():
-    if request.method == "POST":
+    try:
         json_str = request.get_data(as_text=True)
         update_dict = json.loads(json_str)
         update = Update.de_json(update_dict, Bot(TOKEN))
         application.process_update(update)
-        return "OK"
+        return "OK", 200
+    except Exception as e:
+        logging.error(f"Error en webhook: {e}")
+        return "Error", 500
+
+
+
 
 # Función para configurar el webhook en Telegram de forma asíncrona
 async def set_webhook_async():
