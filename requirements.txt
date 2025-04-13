@@ -1,7 +1,9 @@
 Flask==2.2.2
+Werkzeug==2.2.2
 python-telegram-bot==20.6
 openai
 gtts
 pydub
 requests
 python-dotenv
+
